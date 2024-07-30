@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jumbotron">
+    <h1 class="display-4">Bicycle Route Planner</h1>
+    <div id="map" style="height: 500px;"></div>
+    <form method="post" action="/plan_route">
+        <input type="hidden" id="start" name="start">
+        <input type="hidden" id="end" name="end">
+        <button type="submit" class="btn btn-primary mt-3">Plan Route</button>
+    </form>
+    {% if route %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var map = L.map('map').setView([51.505, -0.09], 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            var startCoords = {{ start | tojson }};
+            var endCoords = {{ end | tojson }};
+            var route = {{ route | tojson }};
+
+            var startLatLng = [parseFloat(startCoords.split(',')[1]), parseFloat(startCoords.split(',')[0])];
+            var endLatLng = [parseFloat(endCoords.split(',')[1]), parseFloat(endCoords.split(',')[0])];
+
+            L.marker(startLatLng).addTo(map).bindPopup("Start Point").openPopup();
+            L.marker(endLatLng).addTo(map).bindPopup("End Point").openPopup();
+
+            var latlngs = route.map(function(coord) {
+                return [coord[0], coord[1]];
+            });
+            var polyline = L.polyline(latlngs, {color: 'blue'}).addTo(map);
+            map.fitBounds(polyline.getBounds());
+        });
+    </script>
+    {% elif error %}
+    <div class="alert alert-danger mt-3" role="alert">
+        {{ error }}
+    </div>
+    {% endif %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var map = L.map('map').setView([51.505, -0.09], 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            var startMarker, endMarker;
+
+            map.on('click', function(e) {
+                if (!startMarker) {
+                    startMarker = L.marker(e.latlng).addTo(map).bindPopup("Start Point").openPopup();
+                    document.getElementById('start').value = e.latlng.lng + ',' + e.latlng.lat;
+
+                    // Delay before allowing the end point to be placed
+                    setTimeout(function() {
+                        map.on('click', function(e) {
+                            if (!endMarker) {
+                                endMarker = L.marker(e.latlng).addTo(map).bindPopup("End Point").openPopup();
+                                document.getElementById('end').value = e.latlng.lng + ',' + e.latlng.lat;
+                            }
+                        });
+                    }, 1000); // 1 second delay
+                }
+            });
+        });
+    </script>
+</div>
+{% endblock %}
